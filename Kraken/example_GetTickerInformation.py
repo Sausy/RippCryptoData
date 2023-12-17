@@ -56,6 +56,21 @@ class kraken:
 
         # send request to Server
         resp = requests.get(self.build_req())
+        print("Server Status, ", resp.json()) 
+    
+    def get_TradeInfo(self):
+        ## Get Trade info
+        #like leverage, fees, margins, ... 
+        self.api_method = "AssetPairs"
+        self.api_data = "?pair=%(pair)s" % {"pair": self.api_symbol}
+
+    def get_OrderBook(self): 
+        ## Get Order Book
+        self.api_method = "Depth"
+        self.api_data = "?pair=%(pair)s" % {"pair": self.api_symbol}
+
+        # send request to Server
+        resp = requests.get(self.build_req())
         print("Server Status, ", resp.json())
     
     def get_TickerInformation(self):
