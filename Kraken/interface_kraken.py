@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Created on Thu Dez 6 2023
+Created on Thu Dez 22 2023
 
 @author: sausy
 """
@@ -12,9 +12,8 @@ import time
 import datetime
 
 
-
 class kraken:
-    def __init__(self, currencySymbol="BTCUSD", api_start="1483225200", api_end="9999999999"):
+    def __init__(self, base="BTC", quote='USD' , api_start="1483225200", api_end="9999999999"):
         #default values
         self._api_domain = "https://api.kraken.com"
         self._api_path = "/0/public/"
@@ -24,8 +23,9 @@ class kraken:
         self.api_since = api_start
         self.api_end = api_end  # "9999999999"
 
-        # fix input
-        self.api_symbol = currencySymbol.upper()
+        # set Asset Pair 
+        self.api_symbol =  ""
+        self.set_pairName(base, quote)
         
     
     def build_req(self):
@@ -45,8 +45,6 @@ class kraken:
         resp = requests.get(self.build_req())
         print("Server Time, ", resp.json())
 
-        
-
     def get_ServerStatus(self):
         ## Get System Status
         # {'error': [], 'result': {}}
@@ -59,11 +57,31 @@ class kraken:
         resp = requests.get(self.build_req())
         print("Server Status, ", resp.json()) 
     
-    def get_TradeInfo(self):
+    def set_pairName(self, base, quote):
+        asset_pair = base + quote
+        self.api_symbol = asset_pair.upper()  
+        ticker = self.get_TickerInformation()
+
+        # lets correct the api_symbol
+        self.api_symbol = list(ticker['result'].items())[0][0]
+
+    
+    def get_AssetPairs(self, base, quote):
         ## Get Trade info
         #like leverage, fees, margins, ... 
         self.api_method = "AssetPairs"
-        self.api_data = "?pair=%(pair)s" % {"pair": self.api_symbol}
+        self.api_data = "?pair=%(base)s/%(quote)s" % {"base": base, "quote": quote}
+        print(self.api_data)
+        resp = requests.get(self.build_req()).json()
+        print("AssetPairTag: , ", resp)
+
+    def get_AssetInfo(self, base, quote):
+        ## Get Asset 
+        # e.g.: Bitcoin and USD will return as XXBTZUSD
+        self.api_method = "Assets"
+        self.api_data = "?asset=%(base)s,%(quote)s" % {"base": base, "quote": quote}
+        resp = requests.get(self.build_req()).json()
+        print("AssetPairTag: , ", resp)
 
     def get_OrderBook(self): 
         ## Get Order Book
@@ -92,8 +110,8 @@ class kraken:
         self.api_data = "?pair=%(pair)s" % {"pair": self.api_symbol}
 
         # send request to Server
-        resp = requests.get(self.build_req())
-        print(resp.json())
+        resp = requests.get(self.build_req()).json()
+        return resp
     
     def get_TradeInformation(self):
         ## Get Trade Information
@@ -101,12 +119,12 @@ class kraken:
         #
         # 'pair'->  Array of trade entries [<price>, <volume>, <time>, <buy/sell>, <market/limit>, <miscellaneous>, <trade_id>]
         # error ->  Array of strings(error)
-        count_ = 2 # 2 trades per request 
+        count_ = 100 # 2 trades per request 
 
         self.api_since = self.api_start
         self.api_method = "Trades"
 
-        for i in range(0, 2):
+        for i in range(0, 20):
             self.api_data = "?pair=%(pair)s&since=%(since)s&count=%(count)s" % {
                 "pair": self.api_symbol, "since": self.api_since, "count": count_}
 
@@ -116,23 +134,13 @@ class kraken:
             # update since, the get the next batch of trades
             self.api_since = resp['result']['last']
             print('last: ', self.api_since)
+            print("data: ", len(resp['result'][self.api_symbol]))
 
-            print(resp)
+            if len(resp['result'][self.api_symbol]) < count_:
+                print("End reached")
+                break
 
  
-
-
-# time.struct_time(
-# tm_year=2018, tm_mon=12, tm_mday=27,
-# tm_hour=6, tm_min=35, tm_sec=17,
-# tm_wday=3, tm_yday=361, tm_isdst=0)
-
-# the 1.1.2017 was a sunday
-# and tm_yday=1 because it was the first day of the year
-#startTime_ = (2017, 1, 1, 0, 0, 0, 6, 1, 0)
-#startTime = int(time.mktime(startTime_))
-#print(datetime.timedelta(minutes=5))
-#print(time.mktime(datetime.timedelta(minutes=5)))
 
 print(time.time())
 
@@ -141,17 +149,17 @@ now = datetime.datetime.now()
 endTime = int(now.timestamp())
 startTime = int((now - datetime.timedelta(minutes=20)).timestamp())
 
+
 print("Now: ", endTime)
 print("Now2: ", int(time.time()))
 print(endTime)
 print("pull StartTime: \t{}".format(time.ctime(startTime)))
 print("pull EndTime: \t{}".format(time.ctime(endTime)))
 
-krak = kraken("XXBTZUSD", str(startTime), str(endTime))
+krak = kraken("BTC", "USD", str(startTime), str(endTime))
 
 krak.get_ServerTime()
 krak.get_ServerStatus()
 krak.get_TickerInformation()
 print("========[get_TradeInformation]=============")
 krak.get_TradeInformation()
-
